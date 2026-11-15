@@ -16,7 +16,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest src/
 
-  build-and-push:
+    build-and-push:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -26,6 +26,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -33,3 +40,5 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/random-fact-api:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/random-fact-api:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/random-fact-api:latest
+            ${{ steps.login-ecr.outputs.registry }}/random-fact-api:${{ github.sha }}
