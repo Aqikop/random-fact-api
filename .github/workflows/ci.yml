@@ -42,3 +42,31 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/random-fact-api:${{ github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/random-fact-api:latest
             ${{ steps.login-ecr.outputs.registry }}/random-fact-api:${{ github.sha }}
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            bash -s -- ${{ github.sha }} ${{ secrets.AWS_REGION }} <<'EOF'
+          set -euo pipefail
+          SHA=$1
+          REGION=$2
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com
+          IMAGE=$REGISTRY/random-fact-api:$SHA
+
+          aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+          docker pull "$IMAGE"
+          docker rm -f random-fact-api || true
+          docker run -d --name random-fact-api --restart unless-stopped -p 5000:5000 "$IMAGE"
+          EOF
