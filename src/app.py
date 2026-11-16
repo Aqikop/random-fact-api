@@ -16,7 +16,7 @@ DOG_FACTS = [
 CAT_API_URL = "https://meowfacts.herokuapp.com/"
 
 
-@app.get("/healthz")
+@app.get("/health")
 def health():
     return jsonify(status="ok")
 
