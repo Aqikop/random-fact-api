@@ -23,7 +23,7 @@
       "healthCheck": {
         "command": [
           "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\" || exit 1"
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/healthz')\" || exit 1"
         ],
         "interval": 30,
         "timeout": 5,
